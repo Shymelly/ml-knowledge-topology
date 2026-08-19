@@ -8,13 +8,20 @@ import type { LayerId } from "./types";
 
 export default function App() {
   const { progress, toggle, reset, learnedCount, total } = useProgress();
-  const [selectedId, setSelectedId] = useState<string | null>("ml");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [lessonOpen, setLessonOpen] = useState(false);
   const [activeLayer, setActiveLayer] = useState<LayerId | "all">("all");
   const [filter, setFilter] = useState<"all" | "todo" | "done">("all");
   const [query, setQuery] = useState("");
 
+  const openLesson = (id: string) => {
+    setSelectedId(id);
+    setLessonOpen(true);
+  };
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLessonOpen(false);
       if (e.key === "/" && (e.target as HTMLElement).tagName !== "INPUT") {
         e.preventDefault();
         document.getElementById("q")?.focus();
@@ -68,7 +75,7 @@ export default function App() {
           filter={filter}
           onFilter={setFilter}
           selectedId={selectedId}
-          onSelect={setSelectedId}
+          onSelect={openLesson}
           query={query}
         />
         <GraphCanvas
@@ -76,15 +83,17 @@ export default function App() {
           activeLayer={activeLayer}
           progress={progress}
           query={query}
-          onSelect={setSelectedId}
-        />
-        <TopicPanel
-          selectedId={selectedId}
-          progress={progress}
-          onToggle={toggle}
-          onSelect={setSelectedId}
+          onSelect={openLesson}
         />
       </div>
+      <TopicPanel
+        selectedId={selectedId}
+        open={lessonOpen}
+        progress={progress}
+        onToggle={toggle}
+        onSelect={openLesson}
+        onClose={() => setLessonOpen(false)}
+      />
     </div>
   );
 }

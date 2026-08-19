@@ -142,3 +142,9 @@ export interface Lesson {
   chartCaption: string;
   preset: ChartPreset;
 }
+
+export interface Explain {
+  professional: string;
+  lecture: string[];
+  points: string[];
+}

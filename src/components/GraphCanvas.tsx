@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { edges, layerColor, layers, topicMap } from "../data/knowledge";
-import { createNodes, layoutSize, tick, type SimNode } from "../lib/sim";
+import { createNodes, layoutSize, type SimNode } from "../lib/sim";
 import type { LayerId, ProgressMap } from "../types";
 
 interface Props {
@@ -22,7 +22,13 @@ export default function GraphCanvas({
   const nodesRef = useRef<SimNode[]>([]);
   const cam = useRef({ x: 24, y: 16, k: 0.5 });
   const fitted = useRef(false);
-  const drag = useRef({ mode: "pan" as "pan" | "none", lx: 0, ly: 0, sx: 0, sy: 0 });
+  const drag = useRef({
+    mode: "none" as "none" | "pending" | "pan",
+    lx: 0,
+    ly: 0,
+    sx: 0,
+    sy: 0,
+  });
   const hoverRef = useRef<string | null>(null);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
@@ -145,15 +151,19 @@ export default function GraphCanvas({
 
     const onDown = (e: PointerEvent) => {
       canvas.setPointerCapture(e.pointerId);
-      drag.current = { mode: "pan", lx: e.clientX, ly: e.clientY, sx: e.clientX, sy: e.clientY };
+      drag.current = { mode: "pending", lx: e.clientX, ly: e.clientY, sx: e.clientX, sy: e.clientY };
     };
     const onMove = (e: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
       const node = hit(e.clientX - rect.left, e.clientY - rect.top);
       hoverRef.current = node?.id ?? null;
+      const moved = Math.hypot(e.clientX - drag.current.sx, e.clientY - drag.current.sy);
+      if (drag.current.mode === "pending" && moved > 8) {
+        drag.current.mode = "pan";
+        fly.current = null;
+      }
       canvas.style.cursor = node ? "pointer" : drag.current.mode === "pan" ? "grabbing" : "grab";
       if (drag.current.mode === "pan") {
-        fly.current = null;
         cam.current.x += e.clientX - drag.current.lx;
         cam.current.y += e.clientY - drag.current.ly;
         drag.current.lx = e.clientX;
@@ -163,9 +173,9 @@ export default function GraphCanvas({
     const onUp = (e: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
       const node = hit(e.clientX - rect.left, e.clientY - rect.top);
-      const moved = Math.hypot(e.clientX - drag.current.sx, e.clientY - drag.current.sy);
-      if (node && moved < 6) onSelectRef.current(node.id);
+      const wasPan = drag.current.mode === "pan";
       drag.current.mode = "none";
+      if (!wasPan && node) onSelectRef.current(node.id);
     };
 
     canvas.addEventListener("wheel", onWheel, { passive: false });
@@ -175,7 +185,6 @@ export default function GraphCanvas({
 
     const draw = () => {
       if (!running) return;
-      tick(nodesRef.current);
       const { selectedId: sid, activeLayer: layerFilter, progress: prog, query: qRaw } =
         viewRef.current;
       const rect = canvas.getBoundingClientRect();
@@ -256,12 +265,12 @@ export default function GraphCanvas({
         const a = nodeById.get(e.source);
         const b = nodeById.get(e.target);
         if (!a || !b) continue;
-        const hot = !neighborSet || (neighborSet.has(a.id) && neighborSet.has(b.id));
+        const hot = !!sid && (e.source === sid || e.target === sid);
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
         ctx.lineTo(b.x, b.y);
-        ctx.strokeStyle = hot ? "rgba(212,188,125,0.5)" : "rgba(232,224,204,0.1)";
-        ctx.lineWidth = hot ? 1.6 : 0.8;
+        ctx.strokeStyle = hot ? "rgba(212,188,125,0.82)" : "rgba(232,224,204,0.06)";
+        ctx.lineWidth = hot ? 2.1 : 0.7;
         ctx.stroke();
       }
 
@@ -341,7 +350,7 @@ export default function GraphCanvas({
           </span>
         ))}
       </div>
-      <div className="graph-hint">点击节点会自动飞到它和邻居 · 左侧卡片同样会定位 · 不必来回拖</div>
+      <div className="graph-hint">点击节点弹出学习窗口 · 滚轮缩放 · 拖拽平移</div>
     </div>
   );
 }

@@ -57,8 +57,8 @@ export function createNodes(): SimNode[] {
         const ty = yCursor + i * ROW_H;
         nodes.push({
           id: t.id,
-          x: tx + (Math.random() - 0.5) * 24,
-          y: ty + (Math.random() - 0.5) * 12,
+          x: tx,
+          y: ty,
           vx: 0,
           vy: 0,
           tx,
