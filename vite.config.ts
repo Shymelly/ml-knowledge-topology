@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg", "icons/icon-192.png", "icons/icon-512.png"],
       manifest: {
-        name: "知识拓扑",
-        short_name: "知识拓扑",
+        name: "知识库",
+        short_name: "知识库",
         description: "机器学习广度地图，以及液态与固态电芯材料参数如何互相影响。进度只存在本机。",
         lang: "zh-CN",
         display: "standalone",

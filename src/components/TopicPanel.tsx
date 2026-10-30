@@ -177,7 +177,7 @@ export default function TopicPanel({
               </div>
               {related.length > 0 && (
                 <div className="block">
-                  <h4>拓扑邻居</h4>
+                  <h4>相关条目</h4>
                   <div className="related">
                     {related.map((link) => (
                       <button key={`${link.dir}-${link.rel}-${link.id}`} onClick={() => onSelect(link.id)}>

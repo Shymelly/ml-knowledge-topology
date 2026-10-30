@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AtlasProvider } from "./atlasContext";
 import GraphCanvas from "./components/GraphCanvas";
 import LayerRail from "./components/LayerRail";
@@ -33,6 +33,11 @@ export default function App() {
   const [activeLayer, setActiveLayer] = useState<LayerId | "all">("all");
   const [filter, setFilter] = useState<"all" | "todo" | "done">("all");
   const [query, setQuery] = useState("");
+  const [graphOpen, setGraphOpen] = useState(false);
+  const lessonOpenRef = useRef(false);
+  const graphOpenRef = useRef(false);
+  lessonOpenRef.current = lessonOpen;
+  graphOpenRef.current = graphOpen;
 
   const openLesson = (id: string) => {
     setSelectedId(id);
@@ -48,6 +53,7 @@ export default function App() {
     setActiveLayer("all");
     setFilter("all");
     setQuery("");
+    setGraphOpen(false);
   };
 
   useEffect(() => {
@@ -56,7 +62,10 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setLessonOpen(false);
+      if (e.key === "Escape") {
+        if (lessonOpenRef.current) setLessonOpen(false);
+        else if (graphOpenRef.current) setGraphOpen(false);
+      }
       if (e.key === "/" && (e.target as HTMLElement).tagName !== "INPUT") {
         e.preventDefault();
         document.getElementById("q")?.focus();
@@ -75,55 +84,76 @@ export default function App() {
     <AtlasProvider atlas={atlas}>
       <div className="app">
         <header className="topbar">
-          <div className="brand">
-            <h1>{atlas.title}</h1>
-            <p>
-              {atlas.blurb} · {atlas.topics.length} 个节点 · 进度只存在这台设备
-            </p>
-          </div>
-          <div className="atlas-switch" role="tablist" aria-label="知识库">
-            <button
-              className={atlasId === "cell" ? "on" : ""}
-              onClick={() => switchAtlas("cell")}
-              role="tab"
-              aria-selected={atlasId === "cell"}
-            >
-              电芯材料
-            </button>
-            <button
-              className={atlasId === "ml" ? "on" : ""}
-              onClick={() => switchAtlas("ml")}
-              role="tab"
-              aria-selected={atlasId === "ml"}
-            >
-              机器学习
-            </button>
-          </div>
-          <input
-            id="q"
-            className="search"
-            placeholder={atlas.searchPlaceholder}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <div className="stats">
-            <span>
-              {learnedCount} / {total} · {pct}%
-            </span>
-            <div className="meter" aria-label="学习进度">
-              <span style={{ width: `${pct}%` }} />
+          <div className="topbar-inner">
+            <div className="topbar-main">
+              <div className="brand">
+                <h1>{atlas.title}</h1>
+                <p>
+                  {atlas.blurb} · {atlas.topics.length} 个条目 · 进度只存在这台设备
+                </p>
+              </div>
+              <div className="atlas-switch" role="tablist" aria-label="知识库">
+                <button
+                  className={atlasId === "cell" ? "on" : ""}
+                  onClick={() => switchAtlas("cell")}
+                  role="tab"
+                  aria-selected={atlasId === "cell"}
+                >
+                  电芯材料
+                </button>
+                <button
+                  className={atlasId === "ml" ? "on" : ""}
+                  onClick={() => switchAtlas("ml")}
+                  role="tab"
+                  aria-selected={atlasId === "ml"}
+                >
+                  机器学习
+                </button>
+              </div>
+              <button
+                className={`ghost graph-toggle ${graphOpen ? "on" : ""}`}
+                aria-pressed={graphOpen}
+                onClick={() => setGraphOpen((open) => !open)}
+              >
+                {graphOpen ? "收起拓扑图" : "拓扑图"}
+              </button>
             </div>
-            <button
-              className="ghost"
-              onClick={() => {
-                if (confirm("清空当前知识库的学习标记？")) reset();
-              }}
-            >
-              重置进度
-            </button>
+            <div className="topbar-tools">
+              <input
+                id="q"
+                className="search"
+                placeholder={atlas.searchPlaceholder}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <div className="stats">
+                <span>
+                  {learnedCount} / {total} · {pct}%
+                </span>
+                <div className="meter" aria-label="学习进度">
+                  <span style={{ width: `${pct}%` }} />
+                </div>
+                <button
+                  className="ghost"
+                  onClick={() => {
+                    if (confirm("清空当前知识库的学习标记？")) reset();
+                  }}
+                >
+                  重置进度
+                </button>
+              </div>
+            </div>
           </div>
         </header>
-        <div className="workspace">
+        {graphOpen ? (
+          <GraphCanvas
+            selectedId={selectedId}
+            activeLayer={activeLayer}
+            progress={progress}
+            query={query}
+            onSelect={openLesson}
+          />
+        ) : (
           <LayerRail
             activeLayer={activeLayer}
             onLayer={setActiveLayer}
@@ -134,14 +164,7 @@ export default function App() {
             onSelect={openLesson}
             query={query}
           />
-          <GraphCanvas
-            selectedId={selectedId}
-            activeLayer={activeLayer}
-            progress={progress}
-            query={query}
-            onSelect={openLesson}
-          />
-        </div>
+        )}
         <TopicPanel
           selectedId={selectedId}
           open={lessonOpen}

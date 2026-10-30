@@ -5,7 +5,7 @@ import { buildAtlas } from "./atlas";
 
 export const mlAtlas = buildAtlas({
   id: "ml",
-  title: "机器学习知识拓扑",
+  title: "机器学习知识库",
   blurb: "广度优先 · 已学/未学可标记",
   searchPlaceholder: "搜索算法、模型、用途，按 / 聚焦",
   progressKey: "ml-topology-progress-v1",

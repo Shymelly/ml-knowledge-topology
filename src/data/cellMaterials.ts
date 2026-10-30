@@ -1325,7 +1325,7 @@ if (missing.length) console.warn("电芯材料缺少讲解", missing);
 
 export const cellAtlas = buildAtlas({
   id: "cell",
-  title: "电芯材料知识拓扑",
+  title: "电芯材料知识库",
   blurb: "液态与固态 · 参数如何互相拉动",
   searchPlaceholder: "搜索电导、界面、窗口、正极，按 / 聚焦",
   progressKey: "cell-topology-progress-v1",
