@@ -1,5 +1,4 @@
-import { layers, topics } from "../data/knowledge";
-import type { LayerId } from "../types";
+import type { Layer, LayerId, Topic } from "../types";
 
 export interface SimNode {
   id: string;
@@ -19,7 +18,7 @@ export const BAND_GAP = 78;
 export const ORIGIN_X = 130;
 export const ORIGIN_Y = 86;
 
-export function layoutSize(): { width: number; height: number } {
+export function layoutSize(layers: Layer[], topics: Topic[]): { width: number; height: number } {
   const maxCol = Math.max(...layers.map((l) => l.column));
   const colHeights = new Map<number, number>();
   for (const layer of layers) {
@@ -31,15 +30,15 @@ export function layoutSize(): { width: number; height: number } {
   return { width: ORIGIN_X + (maxCol + 1) * COL_W, height };
 }
 
-export function createNodes(): SimNode[] {
-  const buckets = new Map<LayerId, typeof topics>();
+export function createNodes(layers: Layer[], topics: Topic[]): SimNode[] {
+  const buckets = new Map<LayerId, Topic[]>();
   for (const t of topics) {
     const list = buckets.get(t.layer) ?? [];
     list.push(t);
     buckets.set(t.layer, list);
   }
 
-  const byCol = new Map<number, typeof layers>();
+  const byCol = new Map<number, Layer[]>();
   for (const layer of layers) {
     const list = byCol.get(layer.column) ?? [];
     list.push(layer);

@@ -1,17 +1,4 @@
-export type LayerId =
-  | "overview"
-  | "math"
-  | "data"
-  | "regression"
-  | "classification"
-  | "bayes"
-  | "ensemble"
-  | "cluster"
-  | "signal"
-  | "nn"
-  | "train"
-  | "llm"
-  | "eval";
+export type LayerId = string;
 
 export type Relation =
   | "属于"
@@ -19,7 +6,12 @@ export type Relation =
   | "改进"
   | "组成"
   | "对比"
-  | "依赖";
+  | "依赖"
+  | "促进"
+  | "抑制"
+  | "制约"
+  | "权衡"
+  | "决定";
 
 export interface Layer {
   id: LayerId;
@@ -40,6 +32,10 @@ export interface Topic {
   purpose: string;
   useWhen: string;
   note: string;
+  /** 只在需要对照两种体系时填写。 */
+  compare?: { liquid: string; solid: string };
+  formula?: string;
+  formulaNote?: string;
 }
 
 export interface Edge {

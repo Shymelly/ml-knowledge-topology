@@ -1,12 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { topics } from "../data/knowledge";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProgressMap } from "../types";
 
-const KEY = "ml-topology-progress-v1";
-
-function load(): ProgressMap {
+function load(key: string): ProgressMap {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return {};
     const parsed = JSON.parse(raw) as ProgressMap;
     return parsed && typeof parsed === "object" ? parsed : {};
@@ -15,21 +12,23 @@ function load(): ProgressMap {
   }
 }
 
-export function useProgress() {
+export function useProgress(storageKey: string, topicIds: string[]) {
   const [progress, setProgress] = useState<ProgressMap>({});
+  const keyRef = useRef(storageKey);
+  keyRef.current = storageKey;
 
   useEffect(() => {
-    setProgress(load());
-  }, []);
+    setProgress(load(storageKey));
+  }, [storageKey]);
 
   const persist = useCallback((next: ProgressMap) => {
     setProgress(next);
-    localStorage.setItem(KEY, JSON.stringify(next));
+    localStorage.setItem(keyRef.current, JSON.stringify(next));
   }, []);
 
   const toggle = useCallback(
     (id: string) => {
-      const next = { ...load(), ...progress, [id]: !progress[id] };
+      const next = { ...load(keyRef.current), ...progress, [id]: !progress[id] };
       persist(next);
     },
     [persist, progress],
@@ -37,7 +36,7 @@ export function useProgress() {
 
   const mark = useCallback(
     (id: string, learned: boolean) => {
-      const next = { ...load(), ...progress, [id]: learned };
+      const next = { ...load(keyRef.current), ...progress, [id]: learned };
       persist(next);
     },
     [persist, progress],
@@ -47,8 +46,8 @@ export function useProgress() {
     persist({});
   }, [persist]);
 
-  const learnedCount = topics.filter((t) => progress[t.id]).length;
-  const total = topics.length;
+  const learnedCount = topicIds.filter((id) => progress[id]).length;
+  const total = topicIds.length;
 
   return { progress, toggle, mark, reset, learnedCount, total };
 }

@@ -1,4 +1,4 @@
-import { layers, layerColor, topics } from "../data/knowledge";
+import { useAtlas } from "../atlasContext";
 import type { LayerId, ProgressMap } from "../types";
 
 interface Props {
@@ -22,6 +22,7 @@ export default function LayerRail({
   onSelect,
   query,
 }: Props) {
+  const { layers, layerColor, topics, railAllHint } = useAtlas();
   const q = query.trim().toLowerCase();
   const visible = topics.filter((t) => {
     const inLayer = activeLayer === "all" || t.layer === activeLayer;
@@ -32,7 +33,9 @@ export default function LayerRail({
       t.name.toLowerCase().includes(q) ||
       t.en.toLowerCase().includes(q) ||
       t.tags.some((tag) => tag.toLowerCase().includes(q)) ||
-      t.summary.includes(q);
+      t.summary.includes(query.trim()) ||
+      t.compare?.liquid.includes(query.trim()) ||
+      t.compare?.solid.includes(query.trim());
     return inLayer && status && match;
   });
 
@@ -46,7 +49,7 @@ export default function LayerRail({
         <i className="dot" style={{ background: "var(--accent)" }} />
         <span>
           全部层级
-          <small>从问题类型一路看到大模型</small>
+          <small>{railAllHint}</small>
         </span>
         <b className="frac">
           {topics.filter((t) => progress[t.id]).length}/{topics.length}

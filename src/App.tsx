@@ -1,13 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
+import { AtlasProvider } from "./atlasContext";
 import GraphCanvas from "./components/GraphCanvas";
 import LayerRail from "./components/LayerRail";
 import TopicPanel from "./components/TopicPanel";
-import { topics } from "./data/knowledge";
+import type { Atlas } from "./data/atlas";
+import { cellAtlas } from "./data/cellMaterials";
+import { mlAtlas } from "./data/mlAtlas";
 import { useProgress } from "./hooks/useProgress";
 import type { LayerId } from "./types";
 
+const atlases: Record<Atlas["id"], Atlas> = {
+  ml: mlAtlas,
+  cell: cellAtlas,
+};
+
+const ATLAS_KEY = "topology-atlas-v1";
+
+function readAtlasId(): Atlas["id"] {
+  const saved = localStorage.getItem(ATLAS_KEY);
+  return saved === "cell" || saved === "ml" ? saved : "ml";
+}
+
 export default function App() {
-  const { progress, toggle, reset, learnedCount, total } = useProgress();
+  const [atlasId, setAtlasId] = useState<Atlas["id"]>(readAtlasId);
+  const atlas = atlases[atlasId];
+  const { progress, toggle, reset, learnedCount, total } = useProgress(
+    atlas.progressKey,
+    atlas.topics.map((topic) => topic.id),
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [lessonOpen, setLessonOpen] = useState(false);
   const [activeLayer, setActiveLayer] = useState<LayerId | "all">("all");
@@ -18,6 +38,21 @@ export default function App() {
     setSelectedId(id);
     setLessonOpen(true);
   };
+
+  const switchAtlas = (id: Atlas["id"]) => {
+    if (id === atlasId) return;
+    localStorage.setItem(ATLAS_KEY, id);
+    setAtlasId(id);
+    setSelectedId(null);
+    setLessonOpen(false);
+    setActiveLayer("all");
+    setFilter("all");
+    setQuery("");
+  };
+
+  useEffect(() => {
+    document.title = atlas.title;
+  }, [atlas.title]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -37,63 +72,85 @@ export default function App() {
   );
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="brand">
-          <h1>机器学习知识拓扑</h1>
-          <p>广度优先 · {topics.length} 个节点 · 已学/未学可标记</p>
-        </div>
-        <input
-          id="q"
-          className="search"
-          placeholder="搜索算法、模型、用途，按 / 聚焦"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <div className="stats">
-          <span>
-            {learnedCount} / {total} · {pct}%
-          </span>
-          <div className="meter" aria-label="学习进度">
-            <span style={{ width: `${pct}%` }} />
+    <AtlasProvider atlas={atlas}>
+      <div className="app">
+        <header className="topbar">
+          <div className="brand">
+            <h1>{atlas.title}</h1>
+            <p>
+              {atlas.blurb} · {atlas.topics.length} 个节点 · 进度只存在这台设备
+            </p>
           </div>
-          <button
-            className="ghost"
-            onClick={() => {
-              if (confirm("清空全部学习标记？")) reset();
-            }}
-          >
-            重置进度
-          </button>
+          <div className="atlas-switch" role="tablist" aria-label="知识库">
+            <button
+              className={atlasId === "cell" ? "on" : ""}
+              onClick={() => switchAtlas("cell")}
+              role="tab"
+              aria-selected={atlasId === "cell"}
+            >
+              电芯材料
+            </button>
+            <button
+              className={atlasId === "ml" ? "on" : ""}
+              onClick={() => switchAtlas("ml")}
+              role="tab"
+              aria-selected={atlasId === "ml"}
+            >
+              机器学习
+            </button>
+          </div>
+          <input
+            id="q"
+            className="search"
+            placeholder={atlas.searchPlaceholder}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <div className="stats">
+            <span>
+              {learnedCount} / {total} · {pct}%
+            </span>
+            <div className="meter" aria-label="学习进度">
+              <span style={{ width: `${pct}%` }} />
+            </div>
+            <button
+              className="ghost"
+              onClick={() => {
+                if (confirm("清空当前知识库的学习标记？")) reset();
+              }}
+            >
+              重置进度
+            </button>
+          </div>
+        </header>
+        <div className="workspace">
+          <LayerRail
+            activeLayer={activeLayer}
+            onLayer={setActiveLayer}
+            progress={progress}
+            filter={filter}
+            onFilter={setFilter}
+            selectedId={selectedId}
+            onSelect={openLesson}
+            query={query}
+          />
+          <GraphCanvas
+            selectedId={selectedId}
+            activeLayer={activeLayer}
+            progress={progress}
+            query={query}
+            onSelect={openLesson}
+          />
         </div>
-      </header>
-      <div className="workspace">
-        <LayerRail
-          activeLayer={activeLayer}
-          onLayer={setActiveLayer}
-          progress={progress}
-          filter={filter}
-          onFilter={setFilter}
+        <TopicPanel
           selectedId={selectedId}
-          onSelect={openLesson}
-          query={query}
-        />
-        <GraphCanvas
-          selectedId={selectedId}
-          activeLayer={activeLayer}
+          open={lessonOpen}
           progress={progress}
-          query={query}
+          onToggle={toggle}
           onSelect={openLesson}
+          onClose={() => setLessonOpen(false)}
         />
       </div>
-      <TopicPanel
-        selectedId={selectedId}
-        open={lessonOpen}
-        progress={progress}
-        onToggle={toggle}
-        onSelect={openLesson}
-        onClose={() => setLessonOpen(false)}
-      />
-    </div>
+    </AtlasProvider>
   );
 }
