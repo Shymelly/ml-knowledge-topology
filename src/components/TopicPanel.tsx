@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import Formula from "./Formula";
 import MiniChart from "./MiniChart";
-import { neighborsOf, topicMap, layers, layerColor } from "../data/knowledge";
-import { lessons } from "../data/lessons";
-import { explains } from "../data/explains";
+import { useAtlas } from "../atlasContext";
 import type { ProgressMap } from "../types";
 
 interface Props {
@@ -35,14 +33,19 @@ export default function TopicPanel({
     }
   }, [open, selectedId]);
 
+  const { topicMap, layers, layerColor, lessons, explains, linksOf } = useAtlas();
+
   if (phase === "closed" || !shownId) return null;
 
   const t = topicMap[shownId];
+  if (!t) return null;
   const layer = layers.find((l) => l.id === t.layer)!;
   const learned = !!progress[t.id];
-  const related = neighborsOf(t.id);
+  const related = linksOf(t.id);
   const lesson = lessons[t.id];
   const explain = explains[t.id];
+  const formula = t.formula ?? lesson?.formula;
+  const formulaNote = t.formulaNote ?? lesson?.formulaNote;
 
   return (
     <div
@@ -93,6 +96,21 @@ export default function TopicPanel({
                 <h4>一个类比</h4>
                 <p>{t.analogy}</p>
               </div>
+              {t.compare && (
+                <div className="block">
+                  <h4>液态和固态差在哪</h4>
+                  <div className="compare">
+                    <div>
+                      <b>液态</b>
+                      <p>{t.compare.liquid}</p>
+                    </div>
+                    <div>
+                      <b>固态</b>
+                      <p>{t.compare.solid}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               {explain && (
                 <>
                   <div className="block">
@@ -117,11 +135,11 @@ export default function TopicPanel({
                   </div>
                 </>
               )}
-              {lesson && (
+              {formula && (
                 <div className="block">
                   <h4>核心公式</h4>
-                  <Formula tex={lesson.formula} />
-                  <p>{lesson.formulaNote}</p>
+                  <Formula tex={formula} />
+                  {formulaNote && <p>{formulaNote}</p>}
                 </div>
               )}
             </div>
@@ -159,12 +177,14 @@ export default function TopicPanel({
               </div>
               {related.length > 0 && (
                 <div className="block">
-                  <h4>拓扑邻居</h4>
+                  <h4>相关条目</h4>
                   <div className="related">
-                    {related.map((id) => (
-                      <button key={id} onClick={() => onSelect(id)}>
-                        {topicMap[id].name}
-                        {progress[id] ? " · 已完成" : ""}
+                    {related.map((link) => (
+                      <button key={`${link.dir}-${link.rel}-${link.id}`} onClick={() => onSelect(link.id)}>
+                        {link.dir === "out"
+                          ? `${link.rel} → ${topicMap[link.id].name}`
+                          : `${topicMap[link.id].name} → ${link.rel}`}
+                        {progress[link.id] ? " · 已完成" : ""}
                       </button>
                     ))}
                   </div>

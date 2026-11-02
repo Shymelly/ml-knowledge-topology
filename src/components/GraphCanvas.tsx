@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { edges, layerColor, layers, topicMap } from "../data/knowledge";
+import { useAtlas } from "../atlasContext";
 import { createNodes, layoutSize, type SimNode } from "../lib/sim";
 import type { LayerId, ProgressMap } from "../types";
 
@@ -32,6 +32,9 @@ export default function GraphCanvas({
   const hoverRef = useRef<string | null>(null);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  const atlas = useAtlas();
+  const atlasRef = useRef(atlas);
+  atlasRef.current = atlas;
   const viewRef = useRef({ selectedId, activeLayer, progress, query });
   viewRef.current = { selectedId, activeLayer, progress, query };
   const fly = useRef<{
@@ -49,8 +52,12 @@ export default function GraphCanvas({
   const cmdRef = useRef<"fit-all" | "fit-now" | null>(null);
 
   useEffect(() => {
-    nodesRef.current = createNodes();
-  }, []);
+    nodesRef.current = createNodes(atlas.layers, atlas.topics);
+    fitted.current = false;
+    lastSid.current = null;
+    lastLayer.current = null;
+    fly.current = null;
+  }, [atlas]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -89,7 +96,7 @@ export default function GraphCanvas({
 
     const neighborhood = (id: string) => {
       const ids = new Set<string>([id]);
-      for (const e of edges) {
+      for (const e of atlasRef.current.edges) {
         if (e.source === id) ids.add(e.target);
         if (e.target === id) ids.add(e.source);
       }
@@ -102,14 +109,6 @@ export default function GraphCanvas({
       canvas.width = Math.max(1, Math.floor(rect.width * dpr));
       canvas.height = Math.max(1, Math.floor(rect.height * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      if (!fitted.current && rect.width > 40 && rect.height > 40) {
-        const size = layoutSize();
-        const k = Math.min(rect.width / size.width, rect.height / size.height) * 0.92;
-        cam.current.k = Math.min(Math.max(k, 0.32), 1.1);
-        cam.current.x = (rect.width - size.width * cam.current.k) / 2;
-        cam.current.y = 18;
-        fitted.current = true;
-      }
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -187,7 +186,16 @@ export default function GraphCanvas({
       if (!running) return;
       const { selectedId: sid, activeLayer: layerFilter, progress: prog, query: qRaw } =
         viewRef.current;
+      const { edges, layers, topicMap, layerColor } = atlasRef.current;
       const rect = canvas.getBoundingClientRect();
+      if (!fitted.current && rect.width > 40 && rect.height > 40 && nodesRef.current.length) {
+        const size = layoutSize(atlasRef.current.layers, atlasRef.current.topics);
+        const k = Math.min(rect.width / size.width, rect.height / size.height) * 0.92;
+        cam.current.k = Math.min(Math.max(k, 0.32), 1.1);
+        cam.current.x = (rect.width - size.width * cam.current.k) / 2;
+        cam.current.y = 18;
+        fitted.current = true;
+      }
 
       const cmd = cmdRef.current;
       if (fitted.current && (cmd || sid !== lastSid.current || layerFilter !== lastLayer.current)) {
@@ -276,6 +284,7 @@ export default function GraphCanvas({
 
       for (const n of nodesRef.current) {
         const topic = topicMap[n.id];
+        if (!topic) continue;
         const inLayer = layerFilter === "all" || n.layer === layerFilter;
         const match =
           !q ||
@@ -343,14 +352,14 @@ export default function GraphCanvas({
         </button>
       </div>
       <div className="legend">
-        {layers.map((l) => (
+        {atlas.layers.map((l) => (
           <span key={l.id}>
-            <i className="dot" style={{ background: layerColor[l.id] }} />
+            <i className="dot" style={{ background: atlas.layerColor[l.id] }} />
             {l.name}
           </span>
         ))}
       </div>
-      <div className="graph-hint">点击节点弹出学习窗口 · 滚轮缩放 · 拖拽平移</div>
+      <div className="graph-hint">{atlas.graphHint}</div>
     </div>
   );
 }

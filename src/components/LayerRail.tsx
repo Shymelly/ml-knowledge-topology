@@ -1,5 +1,5 @@
-import { layers, layerColor, topics } from "../data/knowledge";
-import type { LayerId, ProgressMap } from "../types";
+import { useAtlas } from "../atlasContext";
+import type { LayerId, ProgressMap, Topic } from "../types";
 
 interface Props {
   activeLayer: LayerId | "all";
@@ -22,59 +22,76 @@ export default function LayerRail({
   onSelect,
   query,
 }: Props) {
+  const { layers, layerColor, topics } = useAtlas();
   const q = query.trim().toLowerCase();
-  const visible = topics.filter((t) => {
-    const inLayer = activeLayer === "all" || t.layer === activeLayer;
-    const learned = !!progress[t.id];
+  const needle = query.trim();
+
+  const matchTopic = (topic: Topic) => {
+    if (!q) return true;
+    return (
+      topic.name.toLowerCase().includes(q) ||
+      topic.en.toLowerCase().includes(q) ||
+      topic.tags.some((tag) => tag.toLowerCase().includes(q)) ||
+      topic.summary.includes(needle) ||
+      topic.compare?.liquid.includes(needle) ||
+      topic.compare?.solid.includes(needle)
+    );
+  };
+
+  const visible = topics.filter((topic) => {
+    const inLayer = activeLayer === "all" || topic.layer === activeLayer;
+    const learned = !!progress[topic.id];
     const status = filter === "all" || (filter === "done" ? learned : !learned);
-    const match =
-      !q ||
-      t.name.toLowerCase().includes(q) ||
-      t.en.toLowerCase().includes(q) ||
-      t.tags.some((tag) => tag.toLowerCase().includes(q)) ||
-      t.summary.includes(q);
-    return inLayer && status && match;
+    return inLayer && status && matchTopic(topic);
   });
 
-  return (
-    <aside className="rail">
-      <div className="section-label">分层地图</div>
-      <button
-        className={`layer-btn ${activeLayer === "all" ? "active" : ""}`}
-        onClick={() => onLayer("all")}
-      >
-        <i className="dot" style={{ background: "var(--accent)" }} />
-        <span>
-          全部层级
-          <small>从问题类型一路看到大模型</small>
-        </span>
-        <b className="frac">
-          {topics.filter((t) => progress[t.id]).length}/{topics.length}
-        </b>
-      </button>
-      {layers.map((layer) => {
-        const group = topics.filter((t) => t.layer === layer.id);
-        const done = group.filter((t) => progress[t.id]).length;
-        return (
-          <button
-            key={layer.id}
-            className={`layer-btn ${activeLayer === layer.id ? "active" : ""}`}
-            onClick={() => onLayer(layer.id)}
-          >
-            <i className="dot" style={{ background: layerColor[layer.id] }} />
-            <span>
-              {layer.name}
-              <small>{layer.subtitle}</small>
-            </span>
-            <b className="frac">
-              {done}/{group.length}
-            </b>
-          </button>
-        );
-      })}
+  const sections =
+    activeLayer === "all"
+      ? layers
+          .map((layer) => ({
+            layer,
+            items: visible.filter((topic) => topic.layer === layer.id),
+          }))
+          .filter((section) => section.items.length > 0)
+      : layers
+          .filter((layer) => layer.id === activeLayer)
+          .map((layer) => ({ layer, items: visible }));
 
-      <div className="section-label" style={{ marginTop: 18 }}>
-        本层卡片
+  return (
+    <main className="catalog">
+      <div className="catalog-inner">
+      <div className="dir-bar" role="tablist" aria-label="目录">
+        <button
+          className={`dir-btn ${activeLayer === "all" ? "active" : ""}`}
+          onClick={() => onLayer("all")}
+          role="tab"
+          aria-selected={activeLayer === "all"}
+        >
+          <i className="dot" style={{ background: "var(--accent)" }} />
+          全部
+          <small>
+            {topics.filter((topic) => progress[topic.id]).length}/{topics.length}
+          </small>
+        </button>
+        {layers.map((layer) => {
+          const group = topics.filter((topic) => topic.layer === layer.id);
+          const done = group.filter((topic) => progress[topic.id]).length;
+          return (
+            <button
+              key={layer.id}
+              className={`dir-btn ${activeLayer === layer.id ? "active" : ""}`}
+              onClick={() => onLayer(layer.id)}
+              role="tab"
+              aria-selected={activeLayer === layer.id}
+            >
+              <i className="dot" style={{ background: layerColor[layer.id] }} />
+              {layer.name}
+              <small>
+                {done}/{group.length}
+              </small>
+            </button>
+          );
+        })}
       </div>
       <div className="filters">
         {(
@@ -84,28 +101,35 @@ export default function LayerRail({
             ["done", "已完成"],
           ] as const
         ).map(([id, label]) => (
-          <button
-            key={id}
-            className={`chip ${filter === id ? "on" : ""}`}
-            onClick={() => onFilter(id)}
-          >
+          <button key={id} className={`chip ${filter === id ? "on" : ""}`} onClick={() => onFilter(id)}>
             {label}
           </button>
         ))}
       </div>
-      <div className="cards">
-        {visible.map((t) => (
-          <button
-            key={t.id}
-            className={`card ${selectedId === t.id ? "selected" : ""} ${progress[t.id] ? "learned" : ""}`}
-            onClick={() => onSelect(t.id)}
-          >
-            <h3>{t.name}</h3>
-            <div className="en">{t.en}</div>
-            <p>{t.summary}</p>
-          </button>
-        ))}
+      {sections.length === 0 && <p className="empty">没有匹配的条目。</p>}
+      {sections.map(({ layer, items }) => (
+        <section className="dir-section" key={layer.id}>
+          <h2>
+            <i className="dot" style={{ background: layerColor[layer.id] }} />
+            {layer.name}
+            <span>{layer.subtitle}</span>
+          </h2>
+          <div className="card-grid">
+            {items.map((topic) => (
+              <button
+                key={topic.id}
+                className={`card ${selectedId === topic.id ? "selected" : ""} ${progress[topic.id] ? "learned" : ""}`}
+                onClick={() => onSelect(topic.id)}
+              >
+                <h3>{topic.name}</h3>
+                <div className="en">{topic.en}</div>
+                <p>{topic.summary}</p>
+              </button>
+            ))}
+          </div>
+        </section>
+      ))}
       </div>
-    </aside>
+    </main>
   );
 }
