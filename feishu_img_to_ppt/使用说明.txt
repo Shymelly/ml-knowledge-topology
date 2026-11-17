@@ -1,0 +1,37 @@
+飞书聊天图片 → PPT 自动保存
+================================
+
+一、安装（只需一次）
+1. 确认已安装 Python 3.8+（命令行输入 python --version）
+2. 把整个 feishu_img_to_ppt 文件夹复制到任意位置，双击「启动.bat」
+   - 会自动把 py 文件复制到 G:\图片保存
+   - 会自动安装依赖
+
+也可手动：
+  mkdir G:\图片保存
+  copy feishu_img_to_ppt.py G:\图片保存\
+  cd /d G:\图片保存
+  pip install -r requirements.txt
+  python feishu_img_to_ppt.py
+
+二、日常用法
+1. 双击「启动.bat」或运行 python feishu_img_to_ppt.py，保持黑窗口开着
+2. 飞书对话框里有人发文本「1」（或 2、3…）
+   → 用鼠标选中该数字，按 Ctrl+C
+   → 脚本自动新建 G:\图片保存\1.pptx
+3. 飞书里右键图片 → 复制
+   → 按 Ctrl+S
+   → 图片写入当前 PPT 的新一页
+   → 同时在 G:\图片保存\1\ 下留一份原图 PNG
+4. 下一个人发「2」时，再 Ctrl+C 数字，之后的图片会进 2.pptx
+
+三、快捷键
+  Ctrl+S             保存剪贴板图片到当前 PPT
+  Ctrl+Shift+0~9     不复制也能手动指定 PPT 编号
+  Ctrl+Shift+Q       退出程序
+
+四、注意
+- 必须在 Windows 上运行，并存在 G: 盘
+- 第一次用 keyboard 库监听全局热键，若无效请「以管理员身份运行」启动.bat
+- Ctrl+S 会被本工具接管（用于存图），请先复制图片再按
+- 当前编号以「最近一次复制的纯数字」或「Ctrl+Shift+数字」为准
